@@ -1,18 +1,32 @@
 #!/usr/bin/env python3
 
-import socket
+import gevent
+from gevent import monkey, socket
+monkey.patch_all()
 import requests
 import sys
 
-def forward_query(port, url):
-    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, 0)
-    sock.bind(('', port))
+def query(url, data, sock):
+        headers = {'accept': 'application/dns-message',
+                   'content-type': 'application/dns-message'}
+        r = requests.post(url, headers = headers, data = data)
+        sock.send(r.content)
+        try:
+            while True:
+                _ = sock.recv(1500)
+                sock.send(r.content)
+        except:
+            pass
 
-    data, addr = sock.recvfrom(1500)
-    headers = {'accept': 'application/dns-message',
-               'content-type': 'application/dns-message'}
-    r = requests.post(url, headers = headers, data = data)
-    sock.sendto(r.content, addr)
+def forward_query(port, url):
+    while True:
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, 0)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('', port))
+        data, addr = sock.recvfrom(1500)
+        sock.connect(addr)
+        sock.settimeout(6) # for 3 times retry
+        gevent.spawn(query, url, data, sock)
 
 if __name__ == "__main__":
     port = int(sys.argv[1])
