@@ -5,13 +5,15 @@ from gevent import monkey, socket
 monkey.patch_all()
 import requests
 import sys
+from dnslib import DNSRecord
 
 def query(url, data, sock):
-        headers = {'accept': 'application/dns-message',
-                   'content-type': 'application/dns-message'}
-        r = requests.post(url, headers = headers, data = data)
-        sock.send(r.content)
         try:
+            print('send query', DNSRecord.parse(data).q.qname, "to", url)
+            headers = {'accept': 'application/dns-message',
+                       'content-type': 'application/dns-message'}
+            r = requests.post(url, headers = headers, data = data)
+            sock.send(r.content)
             while True:
                 _ = sock.recv(1500)
                 sock.send(r.content)
@@ -29,6 +31,8 @@ def forward_query(port, url):
         gevent.spawn(query, url, data, sock)
 
 if __name__ == "__main__":
-    port = int(sys.argv[1])
-    url = sys.argv[2]
+    if len(sys.argv) == 3 and sys.argv[1] == '-f':
+        exec(open(sys.argv[2]).read())
+    else:
+        exec(open("/etc/forwardoh.conf").read())
     forward_query(port, url)
