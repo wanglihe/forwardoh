@@ -7,12 +7,21 @@ import requests
 import sys
 from dnslib import DNSRecord
 
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
+sess = requests.Session()
+sess.mount('https://',
+           requests.adapters.HTTPAdapter(pool_connections=50,
+                                         pool_maxsize=75,
+                                         max_retries=3))
+
 def query(url, data, sock):
         try:
             print('send query', DNSRecord.parse(data).q.qname, "to", url)
             headers = {'accept': 'application/dns-message',
                        'content-type': 'application/dns-message'}
-            r = requests.post(url, headers = headers, data = data)
+            r = sess.post(url, headers = headers, data = data)
             sock.send(r.content)
             while True:
                 _ = sock.recv(1500)
