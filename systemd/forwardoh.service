@@ -1,0 +1,12 @@
+[Unit]
+Description=forward dns querys over https
+Documentation=man:forwardoh
+DefaultDependencies=no
+Before=networking.service
+
+[Service]
+RemainAfterExit=yes
+ExecStart=/usr/bin/forwardoh
+
+[Install]
+WantedBy=sysinit.target
