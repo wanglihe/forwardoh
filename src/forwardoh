@@ -18,7 +18,7 @@ sess.mount('https://',
 
 def query(url, data, sock):
         try:
-            print('send query', DNSRecord.parse(data).q.qname, "to", url)
+            print('query:', DNSRecord.parse(data).q.qname)
             headers = {'accept': 'application/dns-message',
                        'content-type': 'application/dns-message'}
             r = sess.post(url, headers = headers, data = data)
