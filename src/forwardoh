@@ -15,7 +15,8 @@ import time
 port = 53
 url = "https://127.0.0.1/"
 cache_max = 10000
-cache_refresh = 3
+cache_refresh = 3600
+status_interval = 300
 
 sess = requests.Session()
 sess.mount('https://',
@@ -24,10 +25,15 @@ sess.mount('https://',
                                          max_retries=3))
 
 cache = odict()
+query_cached = 0
+query_total = 0
 
 def query(url, data, sock):
     global cache
+    global query_total
+    global query_cached
     try:
+        query_total += 1
         DNSQuery = DNSRecord.parse(data)
         qname = DNSQuery.q.qname
         #print("===request=======================================")
@@ -36,6 +42,7 @@ def query(url, data, sock):
         now = time.time()
         if qname in cache and (now - cache[qname][1]) < cache_refresh:
             print('query:', qname, "cached")
+            query_cached += 1
             cache.move_to_end(qname)
             resp = DNSQuery.reply()
             resp.rr = cache[qname][0]
@@ -71,10 +78,23 @@ def forward_query(port, url):
         sock.connect(addr)
         sock.settimeout(0)
         gevent.spawn(query, url, data, sock)
+def cache_status():
+    global query_total
+    global query_cached
+    while True:
+        gevent.sleep(status_interval)
+        status = "{} items cached, {} times cache hit in last {} seconds, {:.2f}% "
+        print(status.format(len(cache),
+                            query_cached,
+                            status_interval,
+                            query_total == 0 and 100 or query_cached/query_total*100))
+        query_cached = 0
+        query_total = 0
 
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == '-f':
         exec(open(sys.argv[2]).read())
     else:
         exec(open("/etc/forwardoh.conf").read())
+    gevent.spawn(cache_status)
     forward_query(port, url)
