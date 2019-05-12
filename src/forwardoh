@@ -96,5 +96,8 @@ if __name__ == "__main__":
         exec(open(sys.argv[2]).read())
     else:
         exec(open("/etc/forwardoh.conf").read())
+    version = "1.0.0"
+    print("forwardoh", version)
+    print("listen port: ",port, "remote url:", url)
     gevent.spawn(cache_status)
     forward_query(port, url)
