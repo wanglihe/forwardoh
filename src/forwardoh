@@ -7,6 +7,7 @@ import requests
 import sys
 from dnslib import DNSRecord
 from collections import OrderedDict as odict
+import time
 
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -14,6 +15,7 @@ from collections import OrderedDict as odict
 port = 53
 url = "https://127.0.0.1/"
 cache_max = 10000
+cache_refresh = 3
 
 sess = requests.Session()
 sess.mount('https://',
@@ -31,11 +33,12 @@ def query(url, data, sock):
         #print("===request=======================================")
         #print(DNSQuery)
         #print("=================================================")
-        if qname in cache:
+        now = time.time()
+        if qname in cache and (now - cache[qname][1]) < cache_refresh:
             print('query:', qname, "cached")
             cache.move_to_end(qname)
             resp = DNSQuery.reply()
-            resp.rr = cache[qname]
+            resp.rr = cache[qname][0]
             resp = resp.pack()
         else:
             print('query:', qname, "remote")
@@ -43,7 +46,7 @@ def query(url, data, sock):
                        'content-type': 'application/dns-message'}
             r = sess.post(url, headers = headers, data = data)
             resp = r.content
-            cache[qname] = DNSRecord.parse(resp).rr
+            cache[qname] = (DNSRecord.parse(resp).rr, time.time())
             if len(cache) >= cache_max:
                 cache = odict(list(cache.items())[cache_max//2:])
 
