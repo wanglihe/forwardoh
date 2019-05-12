@@ -28,6 +28,7 @@ def query(url, data, sock):
                 sock.send(r.content)
         except:
             pass
+        sock.close()
 
 def forward_query(port, url):
     while True:
