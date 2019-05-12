@@ -51,6 +51,7 @@ def query(url, data, sock):
         #print(DNSRecord.parse(resp))
         #print("=================================================")
         sock.send(resp)
+        #clear retrans
         while True:
             _ = sock.recv(1500)
             sock.send(resp)
@@ -65,7 +66,7 @@ def forward_query(port, url):
         sock.bind(('', port))
         data, addr = sock.recvfrom(1500)
         sock.connect(addr)
-        sock.settimeout(6) # for 3 times retry
+        sock.settimeout(0)
         gevent.spawn(query, url, data, sock)
 
 if __name__ == "__main__":
