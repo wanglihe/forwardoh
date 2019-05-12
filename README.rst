@@ -23,9 +23,9 @@ put systemd/forwardoh.service into right place(e.g. /lib/systemd/system/forwardo
 
 put config/forwardoh.conf into /etc/
 
-then 
-
+then
 ::
+
     sudo make install
     sudo systemctl enable forwardoh
     sudo systemctl start forwardoh
