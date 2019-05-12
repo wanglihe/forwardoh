@@ -6,9 +6,14 @@ monkey.patch_all()
 import requests
 import sys
 from dnslib import DNSRecord
+from collections import OrderedDict as odict
 
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
+
+port = 53
+url = "https://127.0.0.1/"
+cache_max = 10000
 
 sess = requests.Session()
 sess.mount('https://',
@@ -16,19 +21,42 @@ sess.mount('https://',
                                          pool_maxsize=75,
                                          max_retries=3))
 
+cache = odict()
+
 def query(url, data, sock):
-        try:
-            print('query:', DNSRecord.parse(data).q.qname)
+    global cache
+    try:
+        DNSQuery = DNSRecord.parse(data)
+        qname = DNSQuery.q.qname
+        #print("===request=======================================")
+        #print(DNSQuery)
+        #print("=================================================")
+        if qname in cache:
+            print('query:', qname, "cached")
+            cache.move_to_end(qname)
+            resp = DNSQuery.reply()
+            resp.rr = cache[qname]
+            resp = resp.pack()
+        else:
+            print('query:', qname, "remote")
             headers = {'accept': 'application/dns-message',
                        'content-type': 'application/dns-message'}
             r = sess.post(url, headers = headers, data = data)
-            sock.send(r.content)
-            while True:
-                _ = sock.recv(1500)
-                sock.send(r.content)
-        except:
-            pass
-        sock.close()
+            resp = r.content
+            cache[qname] = DNSRecord.parse(resp).rr
+            if len(cache) >= cache_max:
+                cache = odict(list(cache.items())[cache_max//2:])
+
+        #print("===response======================================")
+        #print(DNSRecord.parse(resp))
+        #print("=================================================")
+        sock.send(resp)
+        while True:
+            _ = sock.recv(1500)
+            sock.send(resp)
+    except Exception as e:
+        pass
+    sock.close()
 
 def forward_query(port, url):
     while True:
