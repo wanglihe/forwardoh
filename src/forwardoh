@@ -51,7 +51,9 @@ def query(url, data, sock):
             print('query:', qname, "remote")
             headers = {'accept': 'application/dns-message',
                        'content-type': 'application/dns-message'}
-            r = sess.post(url, headers = headers, data = data)
+            r = sess.post(url, headers = headers, data = data, allow_redirects = False)
+            if r.status_code != 200:
+                raise Exception
             resp = r.content
             cache[qname] = (DNSRecord.parse(resp).rr, time.time())
             if len(cache) >= cache_max:
